@@ -1,0 +1,33 @@
+# Backlog
+## 1st iteration - account viewer
+1. Reasearch How to access banking in general, specifically banking-oberbank.at
+2. establish secure read connecting to ebanking portal
+2.a. NF: As little logins as possible
+2.b. Check feasibility of oAuth/Web
+3. Fetch banking records for given timeframe
+3.a. Last month (01-31 of last month) should be supported
+3.b. Last n month should be supported
+3.b.1 View: Group by month
+3.c current month (01-now)
+4. UI for banking records
+4.a. Based on outcome of #3 define table view mock for 4.b 
+4.b. Table view showing relevant info (amount, recipient/sender, )
+
+## 2nd iteration - balance observability
+This iteration will focus on the monitoring of financial plans vs actuals. Specificially it should allow the user to define a household plan. The household plan can be compared with the actuals from the account viewer.
+In a second step dashboarding and alerting should come into play
+
+# External links
+## PSD 2
+[Payment service directives (eur-lex)](https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=celex%3A32015L2366) 
+
+[Nederlandishe Bank](https://www.dnb.nl/en/innovations-in-payments-and-banking/fintech-ai-and-innovation/everything-you-should-know-about-psd2/#:~:text=The%20revised%20Payment%20Services%20Directive,in%20the%20European%20payments%20market)
+
+## XS2A
+[FinApi](https://www.finapi.io/en/products/open-banking/xs2a-api-for-banks/)
+
+[Oberbank](https://www.oberbank.at/xs2a-schnittstelle)
+
+[Oberbank Sandbox](https://xs2a-sandbox.3bankenit.at/api-docs/index.html#overview)
+
+[FinApi pip](https://pypi.org/project/finapi/)
