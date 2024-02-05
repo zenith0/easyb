@@ -1,10 +1,9 @@
+import time
+import threading
+import re
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from bs4 import BeautifulSoup
-
-# Konfiguration für einen Headless Chrome-Browser
-#chrome_options = Options()
-#chrome_options.add_argument('--headless')  # Aktiviere den Headless-Modus
 
 chrome_options = Options()
 chrome_options.add_argument('--disable-gpu')
@@ -16,15 +15,10 @@ chrome_options.add_argument('--remote-debugging-port=9222')
 # Define a set to store unique cache entries
 cache_set = set()
 
-import time
-import threading
-import re
-
 # classes:
 # obk financial-overview d/content/
 def scrape_account_details(html_doc):
     soup = BeautifulSoup(html_doc, features="html.parser")
-    div_pattern = re.compile(r'accountdetailportlet_WAR_accountportlet')
     divs = soup.find_all('div', class_='column-wrapper vp')
     for div in divs:
         dates = div.find_all('div', class_='trigger')
@@ -32,19 +26,22 @@ def scrape_account_details(html_doc):
             transaction_date =  dates[0].get_text(strip=True)
             booking_date = dates[1].get_text(strip=True)
             comment =  dates[2].get_text(strip=True)
-            amount = div.find('span', class_='no-wrap').get_text(strip=True)
-#        amount =  soup.getText('div', class_='col-4 vc off-cta-hide db-amount db-amount-bold db-amount-negative')
-    # Store the extracted data in a cache (dictionary)
+            amount_str = div.find('span', class_='no-wrap').get_text(strip=True)
+            # Replace unwanted characters with empty string
+            clean_amount_str = re.sub(r'[^\d.,-]', '', amount_str)
+            # Replace comma with dot for proper float conversion
+            clean_amount_str = clean_amount_str.replace(',', '.')
+            # Convert the cleaned string to float
+            amount = float(clean_amount_str)
+            # Store the extracted data in a cache (dictionary)
             cache_entry = {
                 'transaction_date': transaction_date,
                 'booking_date': booking_date,
-            #'name': name,
-            #'cleaned_time': cleaned_time,
                 'comment': comment,
                 'amount': amount
             }
             if frozenset(cache_entry.items()) not in cache_set:
-                print(cache_entry['booking_date'] + " " + cache_entry['amount'])
+                print(cache_entry)
             cache_set.add(frozenset(cache_entry.items()))
 
 # Function to scrape a single site
@@ -54,7 +51,7 @@ def scrape_account_overview(html_doc):
 
     # Scraping logic
     #driver.get(url)
-   # html_doc=driver.page_source
+    # html_doc=driver.page_source
     # Add your scraping logic here
     # print("Scraping ", html_doc)
     if html_doc:
@@ -70,7 +67,14 @@ def scrape_account_overview(html_doc):
                 transaction_date = dates_elements[0].get_text(strip=True)
                 booking_date = dates_elements[1].get_text(strip=True)
                 comment =  dates_elements[2].get_text(strip=True)
-                amount =  dates_elements[3].get_text(strip=True)
+                # remove unwanted currency and special char, cleanup and format into number
+                amount_str = dates_elements[3].get_text(strip=True) #"-60,00\xa0EUR"
+                # Replace unwanted characters with empty string
+                clean_amount_str = re.sub(r'[^\d.,-]', '', amount_str)
+                # Replace comma with dot for proper float conversion
+                clean_amount_str = clean_amount_str.replace(',', '.')
+                # Convert the cleaned string to float
+                amount = float(clean_amount_str)
                 # Store the extracted data in a cache (dictionary)
                 cache_entry = {
                     'transaction_date': transaction_date,
@@ -80,8 +84,6 @@ def scrape_account_overview(html_doc):
                     'comment': comment,
                     'amount': amount
                 }
-                if frozenset(cache_entry.items()) not in cache_set:
-                    print(cache_entry['booking_date'] + " " + cache_entry['amount'])
 
                 cache_set.add(frozenset(cache_entry.items()))
 
