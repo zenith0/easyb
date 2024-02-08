@@ -46,14 +46,6 @@ def scrape_account_details(html_doc):
 
 # Function to scrape a single site
 def scrape_account_overview(html_doc):
-    # Initialize Chrome WebDriver
-    #driver = webdriver.Chrome(options=chrome_options)
-
-    # Scraping logic
-    #driver.get(url)
-    # html_doc=driver.page_source
-    # Add your scraping logic here
-    # print("Scraping ", html_doc)
     if html_doc:
         soup = BeautifulSoup(html_doc, features="html.parser")
     
@@ -89,13 +81,6 @@ def scrape_account_overview(html_doc):
 
             except Exception as e:
                 print("Error: ", e)
-            # Store the extracted data
-            #print(cache_set)
-            # print(soup.prettify)
-            #for link in tr_text.find_all('td', class_='db-tcol'):
-            #    print(link.get('href'))
-    # Close the browser session
-    # driver.quit()
 
 # Function to monitor the user's browsing activity
 def monitor_browsing():
@@ -113,7 +98,6 @@ def monitor_browsing():
         if "https://www.banking-oberbank.at/group/oberbank/finanzen" in current_url:
             html_doc=driver.page_source
             # Scraping logic
-#            scrape_site(html_doc)
             threading.Thread(target=scrape_account_overview, args=(html_doc,)).start()
         elif "banking-oberbank.at/group/oberbank/accountdetails" in current_url:
             html_doc=driver.page_source
