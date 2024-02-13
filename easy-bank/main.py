@@ -5,9 +5,25 @@ import time
 import signal
 import sys
 from selenium import webdriver
+from selenium.common.exceptions import TimeoutException
+from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.common.by import By
 from bs4 import BeautifulSoup
 from accounting_sender import AccountingSender
+from dotenv import load_dotenv
+import os
+
+# Load variables from .env file
+load_dotenv()
+
+# Access environment variables
+DISPOSER = os.getenv('DISPOSER')
+PIN = os.getenv('PIN')
+ACCOUNT_ID = os.getenv('ACCOUNT_ID')
+
 
 stop_monitoring = False
 
@@ -23,7 +39,7 @@ cache_set = set()
 
 # Initialize Chrome WebDriver
 driver = webdriver.Chrome(options=chrome_options)
-driver.get("https://www.banking-oberbank.at")
+
 
 # classes:
 # obk financial-overview d/content/
@@ -103,11 +119,7 @@ def monitor_browsing():
 
         # Check if the URL has changed since the last check
         # You may need to implement additional logic here to avoid scraping the same URL multiple times
-        if "https://www.banking-oberbank.at/group/oberbank/finanzen" in current_url:
-            html_doc=driver.page_source
-            # Scraping logic
-            threading.Thread(target=scrape_account_overview, args=(html_doc,)).start()
-        elif "banking-oberbank.at/group/oberbank/accountdetails" in current_url:
+        if "banking-oberbank.at/group/oberbank/accountdetails" in current_url:
             html_doc=driver.page_source
             # Scraping logic
 #            scrape_site(html_doc)
@@ -128,14 +140,63 @@ def signal_handler(sig, frame):
     accounting_sender.send_accounting_data(cache_set)
     sys.exit(0)
 
+wait = WebDriverWait(driver, 10)
 
-# Register the signal handler for SIGINT (Ctrl+C)
-signal.signal(signal.SIGINT, signal_handler)
+def login_to_details_view(driver):
+    try:
+    # Wait for the username input field to be visible
+        username_input = wait.until(EC.visibility_of_element_located((By.CLASS_NAME, "loginDisposer")))
+        username_input.send_keys(DISPOSER)
+        password_input = wait.until(EC.visibility_of_element_located((By.CLASS_NAME, "loginPin")))
+        password_input.send_keys(PIN)
+        password_input.send_keys(Keys.ENTER)
 
-# Start monitoring the user's browsing activity in a separate thread
-threading.Thread(target=monitor_browsing).start()
+    except TimeoutException:
+        print("Timeout occurred while waiting for element to be clickable.")
+    # Handle the timeout situation here
+    except Exception as e:
+        print("An error occurred:", e)
+
+def navigate_to_details(driver):
+    amount_element = WebDriverWait(driver, 10).until(
+            EC.element_to_be_clickable((By.CLASS_NAME, 'db-amount'))
+        )
+    amount_element.click()
+
+            # Find the <span class="vc"> element containing the account number and wait for it to be clickable
+    account_number_element = WebDriverWait(driver, 10).until(
+            EC.element_to_be_clickable((By.XPATH, '//span[contains(@class, "vc")]/span[contains(@class, "edit-visible")]'))
+        )
+    account_number_element.click()
+
+        # Wait for the element to be clickable
+    element = WebDriverWait(driver, 10).until(
+            EC.element_to_be_clickable((By.XPATH, "//span[text()='Zur Umsatzübersicht']"))
+        )
+    element.click()
+
+        # Wait for the element to be clickable
+    element = WebDriverWait(driver, 10).until(
+            EC.element_to_be_clickable((By.XPATH, "//span[@for='more-turnovers' and contains(text(), 'Weitere Umsätze anzeigen')]"))
+        )
+    element.click()
+
+def main():
+    # Register the signal handler for SIGINT (Ctrl+C)
+    signal.signal(signal.SIGINT, signal_handler)
+    
+    driver.get("https://www.banking-oberbank.at")
+    # login and navigate to the account details
+    # Find the username input field and fill it out
+    login_to_details_view(driver)
+    driver.get("https://www.banking-oberbank.at/group/oberbank/accountdetails?accountID="+ACCOUNT_ID)
+    # Start monitoring the user's browsing activity in a separate thread
+    threading.Thread(target=monitor_browsing).start()
+
+    # Keep the main thread running to keep the browser window open
+    while True:
+        time.sleep(1)
 
 
-# Keep the main thread running to keep the browser window open
-while True:
-    time.sleep(1)
+if __name__ == "__main__":
+    main()
