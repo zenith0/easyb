@@ -1,9 +1,15 @@
 import time
 import threading
 import re
+import time
+import signal
+import sys
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from bs4 import BeautifulSoup
+from accounting_sender import AccountingSender
+
+stop_monitoring = False
 
 chrome_options = Options()
 chrome_options.add_argument('--disable-gpu')
@@ -14,6 +20,10 @@ chrome_options.add_argument('--remote-debugging-port=9222')
 
 # Define a set to store unique cache entries
 cache_set = set()
+
+# Initialize Chrome WebDriver
+driver = webdriver.Chrome(options=chrome_options)
+driver.get("https://www.banking-oberbank.at")
 
 # classes:
 # obk financial-overview d/content/
@@ -28,7 +38,7 @@ def scrape_account_details(html_doc):
             comment =  dates[2].get_text(strip=True)
             amount_str = div.find('span', class_='no-wrap').get_text(strip=True)
             # Replace unwanted characters with empty string
-            clean_amount_str = re.sub(r'[^\d.,-]', '', amount_str)
+            clean_amount_str = re.sub(r'[^\d,-]', '', amount_str)
             # Replace comma with dot for proper float conversion
             clean_amount_str = clean_amount_str.replace(',', '.')
             # Convert the cleaned string to float
@@ -36,8 +46,8 @@ def scrape_account_details(html_doc):
             # Store the extracted data in a cache (dictionary)
             cache_entry = {
                 'transaction_date': transaction_date,
-                'booking_date': booking_date,
-                'comment': comment,
+                'date': booking_date,
+                'reference': comment,
                 'amount': amount
             }
             if frozenset(cache_entry.items()) not in cache_set:
@@ -62,7 +72,7 @@ def scrape_account_overview(html_doc):
                 # remove unwanted currency and special char, cleanup and format into number
                 amount_str = dates_elements[3].get_text(strip=True) #"-60,00\xa0EUR"
                 # Replace unwanted characters with empty string
-                clean_amount_str = re.sub(r'[^\d.,-]', '', amount_str)
+                clean_amount_str = re.sub(r'[^\d,-]', '', amount_str)
                 # Replace comma with dot for proper float conversion
                 clean_amount_str = clean_amount_str.replace(',', '.')
                 # Convert the cleaned string to float
@@ -70,10 +80,10 @@ def scrape_account_overview(html_doc):
                 # Store the extracted data in a cache (dictionary)
                 cache_entry = {
                     'transaction_date': transaction_date,
-                    'booking_date': booking_date,
+                    'date': booking_date,
                     #'name': name,
                     #'cleaned_time': cleaned_time,
-                    'comment': comment,
+                    'reference': comment,
                     'amount': amount
                 }
 
@@ -84,11 +94,9 @@ def scrape_account_overview(html_doc):
 
 # Function to monitor the user's browsing activity
 def monitor_browsing():
-    # Initialize Chrome WebDriver
-    driver = webdriver.Chrome(options=chrome_options)
-    driver.get("https://www.banking-oberbank.at")
+
     # Monitor the user's browsing activity
-    while True:
+    while not stop_monitoring:
         # Get the current URL the user is visiting
         if driver:
             current_url = driver.current_url
@@ -108,8 +116,25 @@ def monitor_browsing():
         time.sleep(0.5)
 
 
+def signal_handler(sig, frame):
+    stop_monitoring = True
+    driver.quit()
+    base_url = "http://0.0.0.0:5000"
+    accounting_sender = AccountingSender(base_url)
+
+    print("\nCtrl+C detected. Persisting cache..")
+    # Perform cleanup actions here
+    # For example: Close connections, save data, etc.
+    accounting_sender.send_accounting_data(cache_set)
+    sys.exit(0)
+
+
+# Register the signal handler for SIGINT (Ctrl+C)
+signal.signal(signal.SIGINT, signal_handler)
+
 # Start monitoring the user's browsing activity in a separate thread
 threading.Thread(target=monitor_browsing).start()
+
 
 # Keep the main thread running to keep the browser window open
 while True:
