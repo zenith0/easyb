@@ -9,8 +9,19 @@ class AccountingSender:
         print("posting to: ", endpoint)
         headers = {"Content-Type": "application/json"}
         payload = []
-        for entry in accounting_data:
-            payload.append(dict(entry))
+        for fs in accounting_data:
+            formatted_entry = {}
+            for entry in fs:
+                key = entry[0]
+                value = entry[1]
+                #value = str(entry).split(',') 
+            #for key, value in entry.items():
+                if key == 'date' or key == 'transaction_date':
+                    formatted_entry[key] = value.replace(".", "-").replace("'", "")
+                else:
+                    formatted_entry[key] = value
+            payload.append(dict(formatted_entry))
+        print("## Payload: ", payload)
         response = requests.post(endpoint, json=payload, headers=headers)
         if response.status_code == 201:
             print(f"Accounting entry added successfully:: {response.json()}")
