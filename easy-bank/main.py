@@ -110,22 +110,24 @@ def scrape_account_overview(html_doc):
 
 # Function to monitor the user's browsing activity
 def monitor_browsing():
-
+    try:
     # Monitor the user's browsing activity
-    while not stop_monitoring:
-        # Get the current URL the user is visiting
-        if driver:
-            current_url = driver.current_url
+        while not stop_monitoring:
+            # Get the current URL the user is visiting
+            if driver:
+                current_url = driver.current_url
 
         # Check if the URL has changed since the last check
         # You may need to implement additional logic here to avoid scraping the same URL multiple times
-        if "banking-oberbank.at/group/oberbank/accountdetails" in current_url:
-            html_doc=driver.page_source
+            if "banking-oberbank.at/group/oberbank/accountdetails" in current_url:
+                html_doc=driver.page_source
             # Scraping logic
 #            scrape_site(html_doc)
-            threading.Thread(target=scrape_account_details, args=(html_doc,)).start()
+                threading.Thread(target=scrape_account_details, args=(html_doc,)).start()
         # Check every 5 seconds
-        time.sleep(0.5)
+            time.sleep(0.5)
+    except Exception as e:
+        print("Error, ", str(e))
 
 
 def signal_handler(sig, frame):
