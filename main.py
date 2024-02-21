@@ -15,9 +15,13 @@ from bs4 import BeautifulSoup
 from accounting_sender import AccountingSender
 from dotenv import load_dotenv
 import os
+from webdriver_manager.chrome import ChromeDriverManager 
+from selenium import webdriver 
+from selenium.webdriver.chrome.service import Service as ChromeService
 
 # Load variables from .env file
 load_dotenv()
+
 
 # Access environment variables
 DISPOSER = os.getenv('DISPOSER')
@@ -34,12 +38,15 @@ chrome_options.add_argument('--no-sandbox')
 chrome_options.add_argument('--disable-dev-shm-usage')
 chrome_options.add_argument('--remote-debugging-port=9222')
 
+
 # Define a set to store unique cache entries
 cache_set = set()
 
 # Initialize Chrome WebDriver
-driver = webdriver.Chrome(options=chrome_options)
+service=ChromeService(ChromeDriverManager().install())
+driver = webdriver.Chrome(options=chrome_options, service=service)
 
+print("Still alive")
 
 # classes:
 # obk financial-overview d/content/
