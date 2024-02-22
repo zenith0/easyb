@@ -1,4 +1,5 @@
 import requests
+from datetime import datetime
 
 class AccountingSender:
     def __init__(self, base_url):
@@ -27,3 +28,15 @@ class AccountingSender:
             print(f"Accounting entry added successfully:: {response.json()}")
         else:
             print(f"Failed to add accounting entry: {response.json()}")
+
+    def send_accounting_total(self, total):
+        endpoint = f"{self.base_url}/accounting/total"
+        headers = {"Content-Type": "application/json"}
+        payload = {'date': datetime.today().strftime("%d-%m-%Y"),
+                   'total': total}
+        response = requests.post(endpoint, json=payload, headers=headers)
+        if response.status_code == 201:
+            print(f"Total entry added successfully:: {response.json()}")
+        else:
+            print(f"Failed to add total entry: {response.json()}")
+

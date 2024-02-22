@@ -18,7 +18,7 @@ import os
 from webdriver_manager.chrome import ChromeDriverManager 
 from selenium import webdriver 
 from selenium.webdriver.chrome.service import Service as ChromeService
-
+from datetime import datetime
 # Load variables from .env file
 load_dotenv()
 
@@ -46,10 +46,12 @@ cache_set = set()
 service=ChromeService(ChromeDriverManager().install())
 driver = webdriver.Chrome(options=chrome_options, service=service)
 
-print("Still alive")
+today = datetime.today()
 
-# classes:
-# obk financial-overview d/content/
+# Initialize Accountingsender
+base_url = "http://0.0.0.0:5000"
+accounting_sender = AccountingSender(base_url)
+
 def scrape_account_details(html_doc):
     soup = BeautifulSoup(html_doc, features="html.parser")
     divs = soup.find_all('div', class_='column-wrapper vp')
@@ -77,43 +79,18 @@ def scrape_account_details(html_doc):
                 print(cache_entry)
             cache_set.add(frozenset(cache_entry.items()))
 
-# Function to scrape a single site
-def scrape_account_overview(html_doc):
+def scrape_total(html_doc):
     if html_doc:
         soup = BeautifulSoup(html_doc, features="html.parser")
-    
-        tr_element = soup.findAll('tr', class_='db-trow js-turnover-link db-last-transactions-table-row')
-        for ele in tr_element:
 
-            try:
-            # Extract specific data from the <tr> element
-            # 1. Extract dates from the first two <td> elements
-                dates_elements = ele.find_all('td', class_='db-tcol')
-                transaction_date = dates_elements[0].get_text(strip=True)
-                booking_date = dates_elements[1].get_text(strip=True)
-                comment =  dates_elements[2].get_text(strip=True)
-                # remove unwanted currency and special char, cleanup and format into number
-                amount_str = dates_elements[3].get_text(strip=True) #"-60,00\xa0EUR"
-                # Replace unwanted characters with empty string
-                clean_amount_str = re.sub(r'[^\d,-]', '', amount_str)
-                # Replace comma with dot for proper float conversion
-                clean_amount_str = clean_amount_str.replace(',', '.')
-                # Convert the cleaned string to float
-                amount = float(clean_amount_str)
-                # Store the extracted data in a cache (dictionary)
-                cache_entry = {
-                    'transaction_date': transaction_date,
-                    'date': booking_date,
-                    #'name': name,
-                    #'cleaned_time': cleaned_time,
-                    'reference': comment,
-                    'amount': amount
-                }
-
-                cache_set.add(frozenset(cache_entry.items()))
-
-            except Exception as e:
-                print("Error: ", e)
+        try:
+            all_totals = soup.findAll('span', class_='db-amount')
+                    
+            main_total = re.sub(r'[^\d,-]', '', all_totals[0].get_text(strip=True))
+            print("parsed total: ", main_total)
+            accounting_sender.send_accounting_total(main_total)  
+        except Exception as e:
+            print("Error: ", e)
 
 # Function to monitor the user's browsing activity
 def monitor_browsing():
@@ -140,8 +117,7 @@ def monitor_browsing():
 def signal_handler(sig, frame):
     stop_monitoring = True
     driver.quit()
-    base_url = "http://0.0.0.0:5000"
-    accounting_sender = AccountingSender(base_url)
+
 
     print("\nCtrl+C detected. Persisting cache..")
     # Perform cleanup actions here
@@ -151,7 +127,7 @@ def signal_handler(sig, frame):
 
 wait = WebDriverWait(driver, 10)
 
-def login_to_details_view(driver):
+def login(driver):
     try:
     # Wait for the username input field to be visible
         username_input = wait.until(EC.visibility_of_element_located((By.CLASS_NAME, "loginDisposer")))
@@ -195,12 +171,16 @@ def main():
     signal.signal(signal.SIGINT, signal_handler)
     
     driver.get("https://www.banking-oberbank.at")
-    # login and navigate to the account details
+    # login 
     # Find the username input field and fill it out
-    login_to_details_view(driver)
-    driver.get("https://www.banking-oberbank.at/group/oberbank/accountdetails?accountID="+ACCOUNT_ID)
-    # Start monitoring the user's browsing activity in a separate thread
-    threading.Thread(target=monitor_browsing).start()
+    login(driver)
+    # parse total amount
+    scrape_total(driver.page_source)
+    
+
+#    driver.get("https://www.banking-oberbank.at/group/oberbank/accountdetails?accountID="+ACCOUNT_ID)
+#    # Start monitoring the user's browsing activity in a separate thread
+#    threading.Thread(target=monitor_browsing).start()
 
     # Keep the main thread running to keep the browser window open
     while True:
