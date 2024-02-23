@@ -178,9 +178,9 @@ def main():
     scrape_total(driver.page_source)
     
 
-#    driver.get("https://www.banking-oberbank.at/group/oberbank/accountdetails?accountID="+ACCOUNT_ID)
+    driver.get("https://www.banking-oberbank.at/group/oberbank/accountdetails?accountID="+ACCOUNT_ID)
 #    # Start monitoring the user's browsing activity in a separate thread
-#    threading.Thread(target=monitor_browsing).start()
+    threading.Thread(target=monitor_browsing).start()
 
     # Keep the main thread running to keep the browser window open
     while True:
